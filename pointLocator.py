@@ -50,9 +50,9 @@ class pointLocator(object):
 
     def ProjectPointOntoTriangle(self, p, triangle):
         p1, p2, p3 = self.get_pts(triangle)
-        u = p2 - p1
+        u = p2 - p1 # - 
         v = p3 - p1
-        w = p3 - p2
+        w = p3 - p2 # - 
         n = np.cross(u,v)
         n2 = n.dot(n)
         x = p - p1
