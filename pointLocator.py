@@ -63,6 +63,9 @@ class pointLocator(object):
         gamma = np.cross(u,x).dot(n) / n2
         beta = np.cross(x,v).dot(n) / n2
         alpha = np.cross(w,y).dot(n) / n2
+        print(f"alpha: {alpha}")
+        print(f"beta: {beta}")
+        print(f"gamma: {gamma}")
 
         #
         # This is if the point already lies on the triangle
@@ -107,6 +110,7 @@ class pointLocator(object):
         for i in range(m):
             tri = tris[i]
             triproj = self.ProjectPointOntoTriangle(pt, tri)
+            print(triproj[0])
             dist = norm(triproj[1] - pt)
             if dist < min_dist:
                 min_dist = dist

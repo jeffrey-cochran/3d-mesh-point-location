@@ -32,3 +32,22 @@ def load_mesh(mesh_name):
             delimiter=','
         ),
     )
+
+def load_mesh_np(mesh_name):
+    return (
+        loadtxt(
+            join(mesh_dir, mesh_name+"_triangles.csv"),
+            dtype=int, 
+            delimiter=','
+        ),
+        loadtxt(
+            join(mesh_dir, mesh_name+"_verts.csv"),
+            delimiter=','
+        ),
+    )
+
+def load_query_points_np(query_name):
+    return loadtxt(
+        join(query_dir, query_name+"_points.csv"),
+        delimiter=','
+    )

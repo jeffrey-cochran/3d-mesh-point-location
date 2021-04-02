@@ -8,8 +8,7 @@ from utils import load_mesh, load_query_points
 tris, verts = load_mesh('test_mesh')
 all_pts = load_query_points('test')
 vertices = verts[tris[:,:]]
-
-
+store = 0
 #
 # Fix common dimensions
 num_verts = vertices.shape[0]
@@ -32,6 +31,10 @@ edges = cp.roll(vertices,1,axis=1) - vertices             # (p3-p1, p1-p2, p2-p3
 edges[:,1,:] = edges[:,1,:] * -1
 edges[:,2,:] = edges[:,2,:] * -1
 edges = cp.roll(edges, 2, axis=1)
+tmp = edges[:,1,:].copy()
+edges[:,1,:] = edges[:,2,:] 
+edges[:,2,:] = tmp
+
 
 #
 # Compute normals and lengths
@@ -121,7 +124,7 @@ for i in range(num_chunks):
 
     #
     # gamma = u x (p - p1)
-    barycentric[:,0,:,:] = cp.cross(
+    barycentric[:,2,:,:] = cp.cross(
         edges[:,0,:,:], 
         diff_vectors[:,0,:,:]
     )
@@ -131,7 +134,7 @@ for i in range(num_chunks):
         edges[:,1,:,:] 
     )
     # alpha = w x (p - p2)
-    barycentric[:,2,:,:] = cp.cross(
+    barycentric[:,0,:,:] = cp.cross(
         edges[:,2,:,:],
         diff_vectors[:,1,:,:]
     )
@@ -145,6 +148,10 @@ for i in range(num_chunks):
         ),
         normssq
     )
+    # print(f"alpha: {barycentric[:,2,:]}")
+    # print(f"beta: {barycentric[:,1,:]}")
+    # print(f"gamma: {barycentric[:,0,:]}")
+    # print(barycentric)
 
     #
     # Test conditions
@@ -373,9 +380,12 @@ for i in range(num_chunks):
         axis=0
     )
     projections = proj[closest_triangles,np.arange(chunk_size),:]
+    
+    m = min_distances.max()
+    store = m if store < m else store
 
 total = time.time() - begin
 newline = "\n"
 print(f"Computed all {num_verts} alpha, beta, gamma values{newline}for each of the {chunk_size * num_chunks} query points")
 print(f"Seconds Elapsed: {total}")
-
+print(f"Greatest Distance: {store}")
