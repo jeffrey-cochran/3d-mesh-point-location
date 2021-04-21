@@ -57,7 +57,7 @@ def get_expanded_tensors(
     #
     return {
         "vertices": vertices,
-        "edges": vertices,
+        "edges": edges,
         "edge_norms": edge_norms,
         "edge_normssq": edge_normssq,
         "normals": normals,
@@ -81,6 +81,8 @@ def evaluate_chunks(
     normssq: cp.ndarray=None,
     zero_tensor: cp.ndarray=None,
     one_tensor: cp.ndarray=None,
+    tris: cp.ndarray=None,
+    v_normals: cp.ndarray=None,
     chunk_size: int=None,
     num_verts: int=None
 ) -> None:
@@ -384,9 +386,16 @@ def evaluate_chunks(
         projections = proj[closest_triangles,np.arange(chunk_size),:]
         #
         # Emplace results
+        # [triangle_index, vert_index, querypoint_index, coordinates]
+        temp_vertices = tris[closest_triangles]
+        temp_diff = pts[0,0,:,:] - temp_vertices
+        temp_v_normals = v_normals[temp_vertices[:,0]]
+        dot_product = cp.dot(temp_diff, temp_v_normals.transpose())
+
         results[0][start_index:end_index] = closest_triangles
         results[1][start_index:end_index] = min_distances
         results[2][start_index:end_index, :] = projections
+        results[3][start_index:end_index] = cp.less_equal(dot_product, 0.)
         # print(projections.shape)
         # print(min_distances.shape)
         # print(closest_triangles.shape)
@@ -402,7 +411,9 @@ def _locate_points(
     norms: cp.ndarray=None,
     normssq: cp.ndarray=None,
     chunk_size: int=None,
-    num_verts: int=None
+    num_verts: int=None,
+    tris: cp.ndarray=None,
+    v_normals: cp.ndarray=None
 ):
     #
     # Instatiate results
@@ -423,7 +434,8 @@ def _locate_points(
     results = [
         cp.zeros((fake_num_pts,)), 
         cp.zeros((fake_num_pts,)), 
-        cp.zeros((fake_num_pts,3))
+        cp.zeros((fake_num_pts,3)),
+        cp.zeros((fake_num_pts,))
     ]
     #
     # Iterate over as many full-sized
@@ -440,6 +452,8 @@ def _locate_points(
     evaluate_chunks(
         results, # closest triangle, distance, projection
         all_pts=all_pts,
+        tris=tris,
+        v_normals=v_normals,
         **d
     )
     #
@@ -447,6 +461,7 @@ def _locate_points(
     results[0] = results[0][:num_pts]
     results[1] = results[1][:num_pts]
     results[2] = results[2][:num_pts, :]
+    results[3] = results[3][:num_pts]
     #
     return results
 
@@ -458,7 +473,7 @@ def locate_points(
 
     #
     # Load data
-    tris, verts = load_mesh(mesh_prefix)
+    tris, verts, v_normals = load_mesh(mesh_prefix)
     all_pts = load_query_points(pts_prefix)
     vertices = verts[tris[:,:]]
     #
@@ -497,5 +512,7 @@ def locate_points(
         norms=norms,
         normssq=normssq,
         chunk_size=chunk_size,
-        num_verts=num_verts
+        num_verts=num_verts,
+        tris=tris,
+        v_normals=v_normals
     )
