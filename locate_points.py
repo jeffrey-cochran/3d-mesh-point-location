@@ -82,7 +82,6 @@ def evaluate_chunks(
     zero_tensor: cp.ndarray=None,
     one_tensor: cp.ndarray=None,
     tris: cp.ndarray=None,
-    v_normals: cp.ndarray=None,
     chunk_size: int=None,
     num_verts: int=None
 ) -> None:
@@ -152,10 +151,6 @@ def evaluate_chunks(
             ),
             normssq
         )
-        # print(f"alpha: {barycentric[:,2,:]}")
-        # print(f"beta: {barycentric[:,1,:]}")
-        # print(f"gamma: {barycentric[:,0,:]}")
-        # print(barycentric)
 
         #
         # Test conditions
@@ -180,7 +175,7 @@ def evaluate_chunks(
         #
         #     if gamma <= 0:
         cond2 = cp.logical_not(
-            more_than_zero[:,0,:]
+            more_than_zero[:,2,:]
         )
         cond2 = cp.tile(
             cp.expand_dims(
@@ -206,7 +201,7 @@ def evaluate_chunks(
         #
         #     if alpha <= 0:
         cond4 = cp.logical_not(
-            more_than_zero[:,1,:]
+            more_than_zero[:,0,:]
         )
         cond4 = cp.tile(
             cp.expand_dims(
@@ -215,7 +210,7 @@ def evaluate_chunks(
             ),
             (1,3,1)
         )
-
+        
         #
         # Get the projections for each case
         xi = cp.empty(barycentric.shape)
@@ -371,10 +366,18 @@ def evaluate_chunks(
         xi[cond4] = xi4[cond4]
         proj[cp.swapaxes(cond4,1,2)] = proj4[cp.swapaxes(cond4,1,2)]
 
+        vec_to_point = pts[:,0,:,:] - proj
         distances = cp.linalg.norm(
-            pts[:,0,:,:] - proj,
+            vec_to_point,
             axis=2
         )
+
+        n = "\n"
+        # print(f"{pts[:,0,:,:]=}")
+        # print(f"{proj=}")
+        # print(f"{pts[:,0,:,:] - proj=}")
+        # print(f"{distances=}")
+
         closest_triangles = cp.argmin(
             distances,
             axis=0
@@ -384,24 +387,25 @@ def evaluate_chunks(
             axis=0
         )
         projections = proj[closest_triangles,np.arange(chunk_size),:]
+
+        #
+        # Compute if inside the mesh
+        dot_sign = cp.sum(
+                cp.multiply(
+                    vec_to_point[closest_triangles, cp.arange(chunk_size), :], 
+                    normals[closest_triangles, 0, cp.arange(chunk_size), :]
+                ),
+            axis=1
+        )
+        point_in_lumen = cp.less_equal(dot_sign, 0)
+        min_distances[point_in_lumen] = -1 * min_distances[point_in_lumen]
+
         #
         # Emplace results
         # [triangle_index, vert_index, querypoint_index, coordinates]
-        temp_vertices = tris[closest_triangles]
-        temp_diff = pts[0,0,:,:] - temp_vertices
-        temp_v_normals = v_normals[temp_vertices[:,0]]
-        dot_product = cp.dot(temp_diff, temp_v_normals.transpose())
-
         results[0][start_index:end_index] = closest_triangles
         results[1][start_index:end_index] = min_distances
-        results[2][start_index:end_index, :] = projections
-        results[3][start_index:end_index] = cp.less_equal(dot_product, 0.)
-        # print(projections.shape)
-        # print(min_distances.shape)
-        # print(closest_triangles.shape)
-
-        # m = min_distances.max()
-        # store = m if store < m else store
+        results[2][start_index:end_index,:] = projections
 
 def _locate_points(
     all_pts: cp.ndarray=None,
@@ -412,8 +416,7 @@ def _locate_points(
     normssq: cp.ndarray=None,
     chunk_size: int=None,
     num_verts: int=None,
-    tris: cp.ndarray=None,
-    v_normals: cp.ndarray=None
+    tris: cp.ndarray=None
 ):
     #
     # Instatiate results
@@ -434,8 +437,7 @@ def _locate_points(
     results = [
         cp.zeros((fake_num_pts,)), 
         cp.zeros((fake_num_pts,)), 
-        cp.zeros((fake_num_pts,3)),
-        cp.zeros((fake_num_pts,))
+        cp.zeros((fake_num_pts,3))
     ]
     #
     # Iterate over as many full-sized
@@ -453,15 +455,20 @@ def _locate_points(
         results, # closest triangle, distance, projection
         all_pts=all_pts,
         tris=tris,
-        v_normals=v_normals,
         **d
     )
     #
     # Remove extraneous points
-    results[0] = results[0][:num_pts]
+
+    # Closest triangle
+    results[0] = results[0][:num_pts] 
+
+    # Distance
     results[1] = results[1][:num_pts]
+
+    # Projection
     results[2] = results[2][:num_pts, :]
-    results[3] = results[3][:num_pts]
+
     #
     return results
 
@@ -473,7 +480,7 @@ def locate_points(
 
     #
     # Load data
-    tris, verts, v_normals = load_mesh(mesh_prefix)
+    tris, verts = load_mesh(mesh_prefix)
     all_pts = load_query_points(pts_prefix)
     vertices = verts[tris[:,:]]
     #
@@ -513,6 +520,5 @@ def locate_points(
         normssq=normssq,
         chunk_size=chunk_size,
         num_verts=num_verts,
-        tris=tris,
-        v_normals=v_normals
+        tris=tris
     )
