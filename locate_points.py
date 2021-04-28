@@ -372,33 +372,61 @@ def evaluate_chunks(
             axis=2
         )
 
+
+
         n = "\n"
         # print(f"{pts[:,0,:,:]=}")
         # print(f"{proj=}")
         # print(f"{pts[:,0,:,:] - proj=}")
         # print(f"{distances=}")
 
-        closest_triangles = cp.argmin(
-            distances,
-            axis=0
-        )
         min_distances = cp.min(
             distances,
             axis=0
         )
+
+        closest_triangles = cp.argmin(
+            distances,
+            axis=0
+        )
+ 
         projections = proj[closest_triangles,np.arange(chunk_size),:]
 
         #
-        # Compute if inside the mesh
-        dot_sign = cp.sum(
-                cp.multiply(
-                    vec_to_point[closest_triangles, cp.arange(chunk_size), :], 
-                    normals[closest_triangles, 0, cp.arange(chunk_size), :]
-                ),
-            axis=1
+        # Distinguish close triangles
+        is_close = cp.isclose(distances, min_distances)
+
+        #
+        # Determine sign
+        is_negative = cp.less_equal(
+                cp.sum(
+                    cp.multiply(
+                        vec_to_point, 
+                        normals[:, 0, :, :]
+                    ),
+                axis=2
+            ),
+            0.
         )
-        point_in_lumen = cp.less_equal(dot_sign, 0)
-        min_distances[point_in_lumen] = -1 * min_distances[point_in_lumen]
+
+        #
+        # Combine
+        is_close_and_negative = cp.logical_and(
+            is_close,
+            is_negative
+        )
+
+        #
+        # Determine if inside
+        is_inside = cp.all(
+            cp.logical_or(
+                is_close_and_negative,
+                cp.logical_not(is_close)
+            ),
+            axis=0
+        )
+
+        min_distances[is_inside] = -1 * min_distances[is_inside]
 
         #
         # Emplace results

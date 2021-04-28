@@ -79,7 +79,9 @@ class tetrahedron(TestCase):
         assert( 
             approx( 
                 results[1].get(),
-                cp.asarray([0.1,  -0.1,  0.1, -0.1, 0.1, -0.1])
+                cp.asarray(
+                    [0.1,  -0.1,  0.1, -0.1, 0.1, -0.1, 0.1, -0.1]
+                    )
             )
         )
 
@@ -89,35 +91,22 @@ class tetrahedron(TestCase):
             pts_prefix="test_tetra_inside",
             chunk_size=5
         )
-        huh = cp.greater_equal(
-            results[1],
-            0.
-        ).get()
-        tris = results[0].get()
-        pts = loadtxt(join(query_dir, "test_tetra_inside_points.csv"), delimiter=",")
-        print(f"{pts[huh, :]=}")
-        assert(
-            False
+        assert( 
+            cp.less_equal(
+                results[1],
+                0.
+            ).all()
         )
 
-    # def test_outside(self):
-    #     results = locate_points(
-    #         mesh_prefix="test_tetra",
-    #         pts_prefix="test_tetra_outside",
-    #         chunk_size=5
-    #     )
-         
-    #     huh = cp.greater_equal(
-    #         results[1],
-    #         0.
-    #     ).get()
-    #     tris = results[0].get()
-    #     pts = loadtxt(join(query_dir, "test_tetra_outside_points.csv"), delimiter=",")
-    #     print(f"{tris[huh]=}")
-    #     assert(
-    #         False
-    #     )
-
-    # def test_orientation_sensitivity(self):
-    #     assert(True)
-    
+    def test_outside(self):
+        results = locate_points(
+            mesh_prefix="test_tetra",
+            pts_prefix="test_tetra_outside",
+            chunk_size=5
+        )
+        assert( 
+            cp.greater_equal(
+                results[1],
+                0.
+            ).all()
+        )   
