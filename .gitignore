@@ -1,3 +1,5 @@
-__pycache__/*
 data/mesh/*
 data/query/*
+*.pyc
+.pytest_cache
+__pycache__
