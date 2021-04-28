@@ -102,7 +102,7 @@ class tetrahedron(TestCase):
         results = locate_points(
             mesh_prefix="test_tetra",
             pts_prefix="test_tetra_outside",
-            chunk_size=5
+            chunk_size=100
         )
         assert( 
             cp.greater_equal(

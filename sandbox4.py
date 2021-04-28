@@ -3,21 +3,12 @@ from numpy import asarray
 from numpy.linalg import norm
 from csv import writer
 
-x = uniform(size=(100,4))
-x_sum = x.sum(axis=1)
-x_normed = (x.transpose() / x_sum).transpose()
+r = uniform(low=6, high=20, size=(10000,))
+x = uniform(low=-1, high=1, size=(10000,3))
+x_norm = norm(x, axis=1)
+x_normed = (x.transpose() / x_norm).transpose()
 
-corners = asarray([
-    [0.,  0.,  0.],
-    [0., -5.,  0.],
-    [0.,  0.,  5.],
-    [5.,  0.,  0.]
-])
-
-external_points = x_normed.dot(corners)
-external_points = (
-    external_points.transpose() / norm(external_points, axis=1)
-).transpose() * 10.
+external_points = (x_normed.transpose() * r).transpose()
 
 # print(norm(external_points, axis=1))
 
