@@ -21,6 +21,15 @@ def load_query_points(query_name):
     )
 
 def load_mesh(mesh_name):
+    vertex_normals = None
+    try:
+        vertex_normals = load_cuda_array_from_txt(
+            join(mesh_dir, mesh_name+"_vert_normals.csv"),
+            delimiter=','
+        )
+    except:
+        print("Unable to load vertex normals. Using inferred face normals.")
+    
     return (
         load_cuda_array_from_txt(
             join(mesh_dir, mesh_name+"_triangles.csv"),
@@ -31,6 +40,7 @@ def load_mesh(mesh_name):
             join(mesh_dir, mesh_name+"_verts.csv"),
             delimiter=','
         ),
+        vertex_normals
     )
 
 def load_mesh_np(mesh_name):

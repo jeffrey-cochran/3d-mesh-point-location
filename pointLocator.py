@@ -113,11 +113,13 @@ class pointLocator(object):
             tri = tris[i]
             triproj = self.ProjectPointOntoTriangle(pt, tri)
             dist = norm(triproj[1] - pt)
-            print(dist)
             if dist < min_dist:
                 min_dist = dist
                 closest_tri = i
                 proj = triproj
+        print(f"{proj=}")
+        print(f"{closest_tri=}")
+        print(f"{min_dist=}")
         exit()
         return closest_tri, proj, min_dist
 

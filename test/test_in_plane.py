@@ -1,9 +1,9 @@
 from unittest import TestCase
 from locate_points import locate_points
 import cupy as cp
-from numpy import loadtxt
+from numpy import loadtxt, allclose
 from pytest import approx
-from constants import query_dir
+from constants import query_dir, test_data_dir
 from os.path import join
 
 class tetrahedron(TestCase):
@@ -110,3 +110,13 @@ class tetrahedron(TestCase):
                 0.
             ).all()
         )   
+
+    def test_big_mesh(self):
+        results = locate_points(
+            mesh_prefix="test_big_mesh",
+            pts_prefix="test_big_mesh",
+            chunk_size=100
+        )
+        test_distances = results[1].get()
+        validation_distances = loadtxt(join(test_data_dir, "test_big_mesh_signed_distances.csv"))
+        assert(allclose(test_distances, validation_distances))
