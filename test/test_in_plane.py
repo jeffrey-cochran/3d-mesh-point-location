@@ -112,11 +112,62 @@ class tetrahedron(TestCase):
         )   
 
     def test_big_mesh(self):
+        bounding_box = {
+            'rotation_matrix': [
+                [0.77498806, -0.56608065, -0.28097367],
+                [0.58471266,  0.81096618, -0.02109427],
+                [0.2398012,  -0.14794105,  0.95948363]
+            ],
+            'translation_vector': [44.73739702, -192.96706105, 634.59906255],
+            'size': [3.95018717, 14.12505279, 3.52829708]
+        }
+
         results = locate_points(
             mesh_prefix="test_big_mesh",
             pts_prefix="test_big_mesh",
-            chunk_size=100
+            chunk_size=100,
+            bounding_box=bounding_box
         )
         test_distances = results[1].get()
         validation_distances = loadtxt(join(test_data_dir, "test_big_mesh_signed_distances.csv"))
         assert(allclose(test_distances, validation_distances))
+
+    def test_bounding_box_inside(self):
+        bounding_box = {
+            'rotation_matrix': [
+                [1.,  0., 0.],
+                [0., -1., 0.],
+                [0.,  0., 1.]
+            ],
+            'translation_vector': [0., 0., 0.],
+            'size': [1., 2., 2.]
+        }
+
+        results = locate_points(
+            mesh_prefix="test_tetra",
+            pts_prefix="test_tetra_bbox_inside",
+            chunk_size=5,
+            bounding_box=bounding_box
+        )
+
+        assert( cp.less_equal(results[1], 0.).all() )
+
+    def test_bounding_box_outside(self):
+        bounding_box = {
+            'rotation_matrix': [
+                [1.,  0., 0.],
+                [0., -1., 0.],
+                [0.,  0., 1.]
+            ],
+            'translation_vector': [0., 0., 0.],
+            'size': [1., 1., 1.]
+        }
+
+        results = locate_points(
+            mesh_prefix="test_tetra",
+            pts_prefix="test_tetra_bbox_outside",
+            chunk_size=5,
+            bounding_box=bounding_box
+        )
+
+        assert( cp.greater_equal(results[1], 0.).all() )

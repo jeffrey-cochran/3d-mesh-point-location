@@ -83,6 +83,7 @@ def evaluate_chunks(
     one_tensor: cp.ndarray=None,
     tris: cp.ndarray=None,
     vertex_normals: cp.ndarray=None,
+    bounding_box: dict=None,
     chunk_size: int=None,
     num_verts: int=None
 ) -> None:
@@ -443,6 +444,41 @@ def evaluate_chunks(
             axis=0
         )
 
+        #
+        # Overwrite the signs of points
+        # that are outside of the box
+        if bounding_box is not None:
+            #
+            # Extract
+            rotation_matrix = cp.asarray(bounding_box['rotation_matrix'])
+            translation_vector = cp.asarray(bounding_box['translation_vector'])
+            size = cp.asarray(bounding_box['size'])
+            #
+            # Transform
+            transformed_pts = cp.dot(
+                all_pts[start_index:end_index, :] - translation_vector, 
+                rotation_matrix
+            )
+
+            #
+            # Determine if outside bbox
+            inside_bbox = cp.all(
+                cp.logical_and(
+                    cp.less_equal(0., transformed_pts),
+                    cp.less_equal(transformed_pts, size)
+                ),
+                axis=1
+            )
+
+            #
+            # Treat points outside bbox as
+            # being outside of lumen
+            print(f"{inside_bbox=}")
+            is_inside = cp.logical_and(is_inside, inside_bbox)
+            
+        #
+        # Apply sign to indicate whether the distance is 
+        # inside or outside the mesh.
         min_distances[is_inside] = -1 * min_distances[is_inside]
 
         #
@@ -462,7 +498,8 @@ def _locate_points(
     chunk_size: int=None,
     num_verts: int=None,
     tris: cp.ndarray=None,
-    vertex_normals: cp.ndarray=None
+    vertex_normals: cp.ndarray=None,
+    bounding_box: dict=None
 ):
     #
     # Instatiate results
@@ -502,6 +539,7 @@ def _locate_points(
         all_pts=all_pts,
         tris=tris,
         vertex_normals=vertex_normals,
+        bounding_box=bounding_box,
         **d
     )
     #
@@ -522,7 +560,8 @@ def _locate_points(
 def locate_points(
     mesh_prefix: str=None,
     pts_prefix: str=None,
-    chunk_size: int=None
+    chunk_size: int=None,
+    bounding_box: dict=None
 ) -> [cp.ndarray, cp.ndarray, cp.ndarray]:
 
     #
@@ -568,5 +607,6 @@ def locate_points(
         chunk_size=chunk_size,
         num_verts=num_verts,
         tris=tris,
-        vertex_normals=vert_normals
+        vertex_normals=vert_normals,
+        bounding_box=bounding_box
     )
